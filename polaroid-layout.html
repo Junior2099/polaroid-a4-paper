@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" type="image/png" sizes="32x32" href="https://img.icons8.com/?size=100&id=sa0DLzvj6H5i&format=png&color=000000">
+<title>Layout Polaroid — 6x(9x9), 4x(10x12), 2x(12x15)</title>
+<style>
+:root{
+  --page-w: 21cm;
+  --page-h: 29.7cm;
+  --preview-scale: 0.6;
+  --slot-border: 0px solid transparent;
+
+  --slot-w: 9cm;
+  --slot-h: 9cm;
+  --grid-cols: 2;
+  --grid-rows: 3;
+  
+  --polaroid-padding: 0.8cm;
+  --polaroid-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  --crop-mark-color: #000;
+  --crop-mark-length: 0.5cm;
+  --crop-mark-thickness: 0.5px;
+}
+*{ box-sizing: border-box; }
+html, body{ height: 100%; }
+body{
+  margin: 16px;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  background: #f4f6f8;
+  color: #0f172a;
+}
+.toolbar{
+  position: sticky; top: 0;
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+  padding: 10px 12px; margin-bottom: 14px; border-radius: 10px;
+  background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+.toolbar label{ display: inline-flex; align-items: center; gap: 6px; }
+.toolbar input[type="file"]{ padding: 6px 0; }
+.toolbar select{
+  padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff;
+}
+.toolbar button{
+  padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; cursor: pointer;
+}
+.toolbar button:hover{ background: #f1f5f9; }
+.zoom{ display: inline-flex; align-items: center; gap: 8px; }
+.zoom input[type="range"]{ width: 150px; }
+
+.wrapper{ display: grid; place-items: center; }
+.frame{
+  width: calc(var(--page-w) * var(--preview-scale));
+  height: calc(var(--page-h) * var(--preview-scale));
+  overflow: hidden;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06);
+  background: #ddd;
+}
+.page{
+  width: var(--page-w);
+  height: var(--page-h);
+  background: #fff;
+  transform: scale(var(--preview-scale));
+  transform-origin: top left;
+  position: relative;
+}
+
+.grid{
+  position: absolute;
+  inset: 0;
+  width: calc(var(--grid-cols) * var(--slot-w));
+  height: calc(var(--grid-rows) * var(--slot-h));
+  margin: auto;
+  display: grid;
+  grid-template-columns: repeat(var(--grid-cols), var(--slot-w));
+  grid-template-rows: repeat(var(--grid-rows), var(--slot-h));
+  gap: 1cm;
+}
+.slot{
+  width: var(--slot-w);
+  height: var(--slot-h);
+  background: #fff;
+  border: var(--slot-border);
+  position: relative;
+  overflow: hidden;
+  display: grid; place-items: center;
+  box-shadow: var(--polaroid-shadow);
+  border-radius: 2px;
+}
+.slot.filled{ background: #fff; }
+.slot .polaroid-frame{
+  width: calc(100% - var(--polaroid-padding) * 2);
+  height: calc(100% - var(--polaroid-padding) * 2);
+  background: #fff;
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+.slot img{
+  width: 100%;
+  height: 100%;
+  display: block;
+  user-select: none;
+  object-position: center center; 
+}
+.slot .overlay-input{
+  position: absolute; inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 10;
+}
+
+/* Crop marks */
+.slot::before,
+.slot::after {
+  content: '';
+  position: absolute;
+  background: var(--crop-mark-color);
+  z-index: 5;
+}
+
+/* Horizontal crop marks */
+.slot::before {
+  width: var(--crop-mark-length);
+  height: var(--crop-mark-thickness);
+  top: calc(-1 * var(--crop-mark-thickness));
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Vertical crop marks */
+.slot::after {
+  width: var(--crop-mark-thickness);
+  height: var(--crop-mark-length);
+  left: calc(-1 * var(--crop-mark-thickness));
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* Crop marks for corners */
+.slot .crop-corner {
+  position: absolute;
+  background: var(--crop-mark-color);
+  z-index: 5;
+}
+
+.slot .crop-corner.top-left {
+  width: var(--crop-mark-length);
+  height: var(--crop-mark-thickness);
+  top: calc(-1 * var(--crop-mark-thickness));
+  left: calc(-1 * var(--crop-mark-thickness));
+}
+
+.slot .crop-corner.top-left::after {
+  content: '';
+  position: absolute;
+  width: var(--crop-mark-thickness);
+  height: var(--crop-mark-length);
+  top: 0;
+  left: 0;
+  background: var(--crop-mark-color);
+}
+
+.slot .crop-corner.top-right {
+  width: var(--crop-mark-length);
+  height: var(--crop-mark-thickness);
+  top: calc(-1 * var(--crop-mark-thickness));
+  right: calc(-1 * var(--crop-mark-thickness));
+}
+
+.slot .crop-corner.top-right::after {
+  content: '';
+  position: absolute;
+  width: var(--crop-mark-thickness);
+  height: var(--crop-mark-length);
+  top: 0;
+  right: 0;
+  background: var(--crop-mark-color);
+}
+
+.slot .crop-corner.bottom-left {
+  width: var(--crop-mark-length);
+  height: var(--crop-mark-thickness);
+  bottom: calc(-1 * var(--crop-mark-thickness));
+  left: calc(-1 * var(--crop-mark-thickness));
+}
+
+.slot .crop-corner.bottom-left::after {
+  content: '';
+  position: absolute;
+  width: var(--crop-mark-thickness);
+  height: var(--crop-mark-length);
+  bottom: 0;
+  left: 0;
+  background: var(--crop-mark-color);
+}
+
+.slot .crop-corner.bottom-right {
+  width: var(--crop-mark-length);
+  height: var(--crop-mark-thickness);
+  bottom: calc(-1 * var(--crop-mark-thickness));
+  right: calc(-1 * var(--crop-mark-thickness));
+}
+
+.slot .crop-corner.bottom-right::after {
+  content: '';
+  position: absolute;
+  width: var(--crop-mark-thickness);
+  height: var(--crop-mark-length);
+  bottom: 0;
+  right: 0;
+  background: var(--crop-mark-color);
+}
+
+.hint{
+  margin-top: 10px;
+  color: #475569;
+  font-size: 0.95rem;
+}
+
+@media print{
+  body{ margin: 0; background: #fff; }
+  .toolbar, .hint, .frame{ display: none !important; }
+  .page{ width: var(--page-w); height: var(--page-h); transform: none !important; }
+  @page{ size: A4; margin: 0; }
+}
+</style>
+</head>
+<body>
+  <div class="toolbar">
+    <label>Layout:
+      <select id="layout">
+        <option value="sixSquare">6 x 9 × 9 cm (2×3)</option>
+        <option value="four10x12">4 x 10 × 12 cm (2×2)</option>
+        <option value="two12x15">2 x 12 × 15 cm (1×2, paisagem)</option>
+      </select>
+    </label>
+    <input id="fileInput" type="file" accept="image/*" multiple />
+    <label><input type="radio" name="fit" value="cover" checked /> Preencher (corta)</label>
+    <label><input type="radio" name="fit" value="contain" /> Ajustar (sem cortes)</label>
+    <label><input type="radio" name="fit" value="fill" /> Esticar (deforma)</label>
+    <label><input type="checkbox" id="toggleCropMarks" checked /> Mostrar bordas de recorte</label>
+    <div class="zoom">
+      <span>Zoom:</span>
+      <input id="zoom" type="range" min="0.35" max="1" step="0.05" value="0.6" />
+      <span id="zoomVal">60%</span>
+    </div>
+    <button id="clearBtn">Limpar</button>
+    <button id="savePngBtn">Salvar como PNG</button>
+    <button id="savePdfBtn">Salvar como PDF</button>
+  </div>
+
+  <div class="wrapper">
+    <div class="frame">
+      <div id="page" class="page">
+        <div id="grid" class="grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hint">
+    Layout Polaroid com bordas brancas e sombras características. Preview respeita EXIF (fotos em pé).
+  </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" referrerpolicy="no-referrer"></script>
+<script>
+const rootStyle = document.documentElement.style;
+const gridEl = document.getElementById('grid');
+const fileInput = document.getElementById('fileInput');
+const fitInputs = document.querySelectorAll('input[name="fit"]');
+const toggleCropMarks = document.getElementById('toggleCropMarks');
+const clearBtn = document.getElementById('clearBtn');
+const savePngBtn = document.getElementById('savePngBtn');
+const savePdfBtn = document.getElementById('savePdfBtn');
+const zoomRange = document.getElementById('zoom');
+const zoomVal = document.getElementById('zoomVal');
+const layoutSelect = document.getElementById('layout');
+
+let currentFitMode = 'cover';
+let slots = [];
+
+const LAYOUTS = {
+  sixSquare: { cols: 2, rows: 3, slotW: 9, slotH: 9, count: 6 },
+  four10x12: { cols: 2, rows: 2, slotW: 10, slotH: 12, count: 4 },
+  two12x15: { cols: 1, rows: 2, slotW: 15, slotH: 12, count: 2 },
+};
+
+function applyFitStyles(img, mode){
+  img.style.objectFit = mode;        
+  img.style.objectPosition = 'center'; 
+}
+
+function buildSlots(count){
+  gridEl.innerHTML = '';
+  for (let i = 0; i < count; i++){
+    const slot = document.createElement('div');
+    slot.className = 'slot';
+    
+    const polaroidFrame = document.createElement('div');
+    polaroidFrame.className = 'polaroid-frame';
+    
+    const overlay = document.createElement('input');
+    overlay.type = 'file';
+    overlay.accept = 'image/*';
+    overlay.className = 'overlay-input';
+    overlay.addEventListener('change', async () => {
+      const file = overlay.files[0];
+      await placeImageInSlot(file, slot);
+      overlay.value = '';
+    });
+    
+    // Add crop mark corners
+    const topLeft = document.createElement('div');
+    topLeft.className = 'crop-corner top-left';
+    const topRight = document.createElement('div');
+    topRight.className = 'crop-corner top-right';
+    const bottomLeft = document.createElement('div');
+    bottomLeft.className = 'crop-corner bottom-left';
+    const bottomRight = document.createElement('div');
+    bottomRight.className = 'crop-corner bottom-right';
+    
+    slot.appendChild(polaroidFrame);
+    slot.appendChild(overlay);
+    slot.appendChild(topLeft);
+    slot.appendChild(topRight);
+    slot.appendChild(bottomLeft);
+    slot.appendChild(bottomRight);
+    gridEl.appendChild(slot);
+  }
+  slots = Array.from(gridEl.querySelectorAll('.slot'));
+}
+
+function applyLayout(key, keepImages = true){
+  const cfg = LAYOUTS[key];
+  if (!cfg) return;
+
+  const srcs = keepImages ? slots.map(s => s.querySelector('img')?.src || null) : [];
+
+  rootStyle.setProperty('--grid-cols', String(cfg.cols));
+  rootStyle.setProperty('--grid-rows', String(cfg.rows));
+  rootStyle.setProperty('--slot-w', cfg.slotW + 'cm');
+  rootStyle.setProperty('--slot-h', cfg.slotH + 'cm');
+
+  buildSlots(cfg.count);
+
+  if (keepImages && srcs.length){
+    srcs.slice(0, slots.length).forEach((src, idx) => {
+      if (!src) return;
+      placeSrcInSlot(src, slots[idx]);
+    });
+  }
+
+  slots.forEach(slot => {
+    const img = slot.querySelector('img');
+    if (img) applyFitStyles(img, currentFitMode);
+  });
+}
+
+async function fileToOrientedDataUrl(file){
+  if ('createImageBitmap' in window) {
+    try{
+      const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
+      const canvas = document.createElement('canvas');
+      canvas.width = bmp.width;
+      canvas.height = bmp.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(bmp, 0, 0);
+      if ('close' in bmp) try{ bmp.close(); }catch(e){}
+      return await new Promise(resolve => canvas.toBlob(b => resolve(URL.createObjectURL(b)), 'image/png', 1));
+    }catch(e){
+    }
+  }
+  return URL.createObjectURL(file);
+}
+
+function placeSrcInSlot(src, slot){
+  let img = slot.querySelector('img');
+  if (!img){
+    img = new Image();
+    img.alt = '';
+    img.decoding = 'async';
+    img.loading = 'eager';
+    img.addEventListener('load', () => applyFitStyles(img, currentFitMode));
+    img.style.width = '100%';
+    img.style.height = '100%';
+    const polaroidFrame = slot.querySelector('.polaroid-frame');
+    polaroidFrame.appendChild(img);
+  }
+  img.src = src;
+  applyFitStyles(img, currentFitMode);
+  slot.classList.add('filled');
+}
+
+async function placeImageInSlot(file, slot){
+  if (!file) return;
+  const orientedUrl = await fileToOrientedDataUrl(file);
+  placeSrcInSlot(orientedUrl, slot);
+}
+
+fileInput.addEventListener('change', async () => {
+  const files = Array.from(fileInput.files).slice(0, slots.length);
+  for (let i = 0; i < files.length; i++){
+    const slot = slots[i];
+    if (slot) await placeImageInSlot(files[i], slot);
+  }
+});
+
+function setFitMode(mode){
+  currentFitMode = mode;
+  slots.forEach(slot => {
+    const img = slot.querySelector('img');
+    if (img) applyFitStyles(img, mode);
+  });
+}
+fitInputs.forEach(r => r.addEventListener('change', () => {
+  const mode = document.querySelector('input[name="fit"]:checked')?.value || 'cover';
+  setFitMode(mode);
+}));
+
+toggleCropMarks.addEventListener('change', () => {
+  const visible = toggleCropMarks.checked;
+  rootStyle.setProperty('--crop-mark-color', visible ? '#000' : 'transparent');
+});
+
+clearBtn.addEventListener('click', () => {
+  slots.forEach(slot => {
+    const img = slot.querySelector('img');
+    if (img) img.remove();
+    slot.classList.remove('filled');
+  });
+  fileInput.value = '';
+});
+
+function updateZoom(v){
+  const num = Number(v);
+  rootStyle.setProperty('--preview-scale', String(num));
+  zoomVal.textContent = Math.round(num * 100) + '%';
+}
+zoomRange.addEventListener('input', (e) => updateZoom(e.target.value));
+
+const PX_PER_CM = 96 / 2.54; 
+const PAGE_W_CM = 21;
+const PAGE_H_CM = 29.7;
+
+function cmToPx(cm){ return Math.round(cm * PX_PER_CM); }
+
+function getSlotImages(){
+  return slots.map(slot => slot.querySelector('img') || null);
+}
+async function ensureImagesDecoded(imgs){
+  const decodes = imgs.filter(Boolean).map(img => (img.decode ? img.decode().catch(() => {}) : Promise.resolve()));
+  await Promise.all(decodes);
+}
+
+function currentLayoutConfig(){
+  const key = layoutSelect.value;
+  return LAYOUTS[key];
+}
+
+function drawImageCover(ctx, src, dx, dy, dw, dh){
+  const sw = src.naturalWidth || src.width;
+  const sh = src.naturalHeight || src.height;
+  if (!sw || !sh) return;
+  const scale = Math.max(dw / sw, dh / sh);
+  const sWidth = Math.round(dw / scale);
+  const sHeight = Math.round(dh / scale);
+  const sx = Math.max(0, Math.round((sw - sWidth) / 2));
+  const sy = Math.max(0, Math.round((sh - sHeight) / 2));
+  ctx.drawImage(src, sx, sy, sWidth, sHeight, dx, dy, dw, dh);
+}
+function drawImageContain(ctx, src, dx, dy, dw, dh){
+  const sw = src.naturalWidth || src.width;
+  const sh = src.naturalHeight || src.height;
+  if (!sw || !sh) return;
+  const scale = Math.min(dw / sw, dh / sh);
+  const drawW = Math.round(sw * scale);
+  const drawH = Math.round(sh * scale);
+  const x = dx + Math.round((dw - drawW) / 2);
+  const y = dy + Math.round((dh - drawH) / 2);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(dx, dy, dw, dh);
+  ctx.drawImage(src, x, y, drawW, drawH);
+}
+function drawImageFill(ctx, src, dx, dy, dw, dh){
+  ctx.drawImage(src, dx, dy, dw, dh);
+}
+
+async function renderToCanvas(){
+  const canvas = document.createElement('canvas');
+  const pageW = cmToPx(PAGE_W_CM);
+  const pageH = cmToPx(PAGE_H_CM);
+  canvas.width = pageW;
+  canvas.height = pageH;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, pageW, pageH);
+
+  const cfg = currentLayoutConfig();
+  const gridW = cmToPx(cfg.slotW * cfg.cols + (cfg.cols - 1) * 1); // Including gap
+  const gridH = cmToPx(cfg.slotH * cfg.rows + (cfg.rows - 1) * 1); // Including gap
+  const left = Math.round((pageW - gridW) / 2);
+  const top  = Math.round((pageH - gridH) / 2);
+  const slotWpx = cmToPx(cfg.slotW);
+  const slotHpx = cmToPx(cfg.slotH);
+  const gapPx = cmToPx(1);
+
+  const imgs = getSlotImages();
+  await ensureImagesDecoded(imgs);
+
+  let idx = 0;
+  for (let r = 0; r < cfg.rows; r++){
+    for (let c = 0; c < cfg.cols; c++){
+      const img = imgs[idx++];
+      if (!img) continue;
+      
+      const dx = left + c * (slotWpx + gapPx);
+      const dy = top  + r * (slotHpx + gapPx);
+      
+             // Draw polaroid frame (white background)
+       ctx.fillStyle = '#FFFFFF';
+       ctx.fillRect(dx, dy, slotWpx, slotHpx);
+       
+       // Draw crop marks if enabled
+       if (toggleCropMarks.checked) {
+         const cropLength = cmToPx(0.5);
+         const cropThickness = 1;
+         
+         // Top center crop mark
+         ctx.fillStyle = '#000000';
+         ctx.fillRect(dx + slotWpx/2 - cropLength/2, dy - cropThickness, cropLength, cropThickness);
+         
+         // Left center crop mark
+         ctx.fillRect(dx - cropThickness, dy + slotHpx/2 - cropLength/2, cropThickness, cropLength);
+         
+         // Corner crop marks
+         // Top-left
+         ctx.fillRect(dx - cropThickness, dy - cropThickness, cropLength, cropThickness);
+         ctx.fillRect(dx - cropThickness, dy - cropThickness, cropThickness, cropLength);
+         
+         // Top-right
+         ctx.fillRect(dx + slotWpx - cropLength + cropThickness, dy - cropThickness, cropLength, cropThickness);
+         ctx.fillRect(dx + slotWpx - cropThickness, dy - cropThickness, cropThickness, cropLength);
+         
+         // Bottom-left
+         ctx.fillRect(dx - cropThickness, dy + slotHpx - cropThickness, cropLength, cropThickness);
+         ctx.fillRect(dx - cropThickness, dy + slotHpx - cropLength + cropThickness, cropThickness, cropLength);
+         
+         // Bottom-right
+         ctx.fillRect(dx + slotWpx - cropLength + cropThickness, dy + slotHpx - cropThickness, cropLength, cropThickness);
+         ctx.fillRect(dx + slotWpx - cropThickness, dy + slotHpx - cropLength + cropThickness, cropThickness, cropLength);
+       }
+       
+       // Draw image with padding
+       const padding = cmToPx(0.8);
+       const imgDx = dx + padding;
+       const imgDy = dy + padding;
+       const imgDw = slotWpx - padding * 2;
+       const imgDh = slotHpx - padding * 2;
+      
+      if (currentFitMode === 'fill')      drawImageFill(ctx, img, imgDx, imgDy, imgDw, imgDh);
+      else if (currentFitMode === 'contain') drawImageContain(ctx, img, imgDx, imgDy, imgDw, imgDh);
+      else                                 drawImageCover(ctx, img, imgDx, imgDy, imgDw, imgDh);
+    }
+  }
+  return canvas;
+}
+
+function downloadBlob(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+savePngBtn.addEventListener('click', async () => {
+  const canvas = await renderToCanvas();
+  canvas.toBlob((blob) => {
+    if (!blob) return;
+    const key = layoutSelect.value;
+    downloadBlob(blob, `polaroid-${key}.png`);
+  }, 'image/png', 1.0);
+});
+
+savePdfBtn.addEventListener('click', async () => {
+  const canvas = await renderToCanvas();
+  const dataUrl = canvas.toDataURL('image/png');
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  doc.addImage(dataUrl, 'PNG', 0, 0, 210, 297);
+  const key = layoutSelect.value;
+  doc.save(`polaroid-${key}.pdf`);
+});
+
+function init(){
+  setFitMode('cover');
+  updateZoom(zoomRange.value);
+  applyLayout(layoutSelect.value, false);
+  
+  // Initialize crop marks visibility
+  toggleCropMarks.checked = true;
+  rootStyle.setProperty('--crop-mark-color', '#000');
+}
+layoutSelect.addEventListener('change', () => applyLayout(layoutSelect.value, true));
+zoomRange.value = '0.6';
+init();
+</script>
+</body>
+</html>
